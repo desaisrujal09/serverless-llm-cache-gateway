@@ -2,14 +2,14 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# 1. Automatically zip the Python file
+# Automatically zip the Python file
 data "archive_file" "lambda_zip" {
   type        = "zip"
   source_file = "lambda_function.py"
   output_path = "lambda_function.zip"
 }
 
-# 2. IAM Role and Policies
+# IAM Role and Policies
 resource "aws_iam_role" "lambda_exec" {
   name = "llm_gateway_lambda_role"
   assume_role_policy = jsonencode({
@@ -41,7 +41,7 @@ resource "aws_iam_role_policy" "bedrock_access" {
   })
 }
 
-# 3. Lambda Function
+# Lambda Function
 resource "aws_lambda_function" "llm_gateway" {
   filename         = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
@@ -53,12 +53,13 @@ resource "aws_lambda_function" "llm_gateway" {
 
   environment {
     variables = {
-      API_KEY = var.api_key
+      API_KEY     = var.api_key
+      CACHE_TABLE = aws_dynamodb_table.llm_cache.name
     }
   }
 }
 
-# 4. HTTP API Gateway
+# HTTP API Gateway
 resource "aws_apigatewayv2_api" "gateway_api" {
   name          = "llm-gateway-api"
   protocol_type = "HTTP"
@@ -90,6 +91,38 @@ resource "aws_lambda_permission" "api_gw" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.gateway_api.execution_arn}/*/*"
 }
+
+# Create the DynamoDB Cache Table
+resource "aws_dynamodb_table" "llm_cache" {
+  name         = "LLMPromptCache"
+  billing_mode = "PAY_PER_REQUEST" # Free tier friendly, pay only for reads/writes
+  hash_key     = "PromptHash"
+
+  attribute {
+    name = "PromptHash"
+    type = "S"
+  }
+
+  # Automatically delete cached items after they expire
+  ttl {
+    attribute_name = "ExpirationTime"
+    enabled        = true
+  }
+}
+
+# Add DynamoDB permissions to your Lambda IAM Role
+resource "aws_iam_role_policy" "dynamodb_access" {
+  role = aws_iam_role.lambda_exec.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action   = ["dynamodb:PutItem", "dynamodb:GetItem"]
+      Effect   = "Allow"
+      Resource = aws_dynamodb_table.llm_cache.arn
+    }]
+  })
+}
+
 
 # 5. Output the live URL
 output "gateway_url" {
