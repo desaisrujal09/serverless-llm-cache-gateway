@@ -50,6 +50,12 @@ resource "aws_lambda_function" "llm_gateway" {
   handler          = "lambda_function.handler"
   runtime          = "python3.12"
   timeout          = 60 # Extended timeout for longer LLM generations
+
+  environment {
+    variables = {
+      API_KEY = var.api_key
+    }
+  }
 }
 
 # 4. HTTP API Gateway
