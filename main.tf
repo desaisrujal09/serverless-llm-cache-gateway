@@ -36,7 +36,12 @@ resource "aws_iam_role_policy" "bedrock_access" {
         Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
         Effect   = "Allow"
         Resource = "arn:aws:logs:*:*:*"
-      }
+      },
+      {
+      Action   = ["dynamodb:PutItem", "dynamodb:GetItem"]
+      Effect   = "Allow"
+      Resource = aws_dynamodb_table.llm_cache.arn
+    }
     ]
   })
 }
@@ -110,21 +115,7 @@ resource "aws_dynamodb_table" "llm_cache" {
   }
 }
 
-# Add DynamoDB permissions to your Lambda IAM Role
-resource "aws_iam_role_policy" "dynamodb_access" {
-  role = aws_iam_role.lambda_exec.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action   = ["dynamodb:PutItem", "dynamodb:GetItem"]
-      Effect   = "Allow"
-      Resource = aws_dynamodb_table.llm_cache.arn
-    }]
-  })
-}
-
-
-# 5. Output the live URL
+# Output the live URL
 output "gateway_url" {
   value = "${aws_apigatewayv2_api.gateway_api.api_endpoint}/chat/completions"
 }
