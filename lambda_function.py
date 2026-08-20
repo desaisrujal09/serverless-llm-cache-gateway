@@ -1,16 +1,30 @@
 import json
 import boto3
+import os
 
-# Initialize outside the handler for connection reuse
 bedrock = boto3.client('bedrock-runtime')
+# Pull the expected key from the Terraform environment variables
+EXPECTED_API_KEY = os.environ.get('API_KEY', 'default-key')
 
 def handler(event, context):
     try:
+        # 1. AUTHENTICATION CHECK
+        headers = event.get('headers', {})
+        # API Gateway sometimes lowercases headers, so we check for 'authorization'
+        auth_header = headers.get('authorization', headers.get('Authorization', ''))
+        
+        if auth_header != f"Bearer {EXPECTED_API_KEY}":
+            return {
+                "statusCode": 401,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"error": "Unauthorized. Invalid API Key."})
+            }
+
+        # 2. ORIGINAL BEDROCK LOGIC
         body = json.loads(event.get('body', '{}'))
         model_id = body.get('model', 'amazon.nova-micro-v1:0')
         messages = body.get('messages', [])
         
-        # Bedrock requires system prompts to be separated from user/assistant messages
         bedrock_messages = []
         for msg in messages:
             if msg.get('role') != 'system':
@@ -21,7 +35,6 @@ def handler(event, context):
                 
         system_prompts = [{"text": m.get('content')} for m in messages if m.get('role') == 'system']
         
-        # Build Converse API payload
         kwargs = {
             "modelId": model_id,
             "messages": bedrock_messages
@@ -29,11 +42,9 @@ def handler(event, context):
         if system_prompts:
             kwargs["system"] = system_prompts
             
-        # Invoke the model
         response = bedrock.converse(**kwargs)
         output_text = response['output']['message']['content'][0]['text']
         
-        # Return OpenAI-compatible response
         return {
             "statusCode": 200,
             "headers": {"Content-Type": "application/json"},
