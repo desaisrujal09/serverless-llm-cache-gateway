@@ -5,9 +5,9 @@
 ![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=for-the-badge&logo=terraform&logoColor=white)
 ![Python](https://img.shields.io/badge/Python_3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
 
-An enterprise-ready, serverless proxy gateway deployed with Terraform that translates standard **OpenAI API** requests into **AWS Bedrock Converse API** calls. 
+An enterprise ready, serverless proxy gateway deployed with Terraform that translates standard **OpenAI API** requests into **AWS Bedrock Converse API** calls. 
 
-This project enables existing applications and AI pipelines to seamlessly switch their backend models to AWS Bedrock (e.g., Anthropic Claude 3.5 Sonnet, Amazon Nova) by simply changing their base URL—without requiring any application code rewrites.
+This project enables existing applications and AI pipelines to seamlessly switch their backend models to AWS Bedrock (e.g., Anthropic Claude 3.5 Sonnet, Amazon Nova) by simply changing their base URL without requiring any application code rewrites.
 
 ---
 
